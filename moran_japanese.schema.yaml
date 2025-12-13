@@ -7,7 +7,7 @@ schema:
 
 switches:
   - name: ascii_mode
-    reset: 0
+    reset: 1
     states: [ Jp, En ]
   - name: full_shape
     states: [ Half, Full ]
