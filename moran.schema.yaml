@@ -29,6 +29,7 @@ switches:
   - name: traditionalization
     states: [ 汉字, 漢字 ]
   - name: ascii_punct
+    reset: 1
     states: [ 。，, ．， ]
   - name: extended_charset
     states: [ 通用, 增廣 ]
@@ -54,6 +55,7 @@ engine:
     - key_binder
     - lua_processor@*moran_pin*pin_processor
     - lua_processor@*moran_processor
+    - lua_processor@*select_character # lua 选词扩展，如需关闭请注释
     - ascii_composer
     - recognizer
     - speller
@@ -299,6 +301,8 @@ punctuator:
   import_preset: symbols
 
 key_binder:
+  select_first_character: "bracketleft" # lua 选词快捷键，选第一个字
+  select_last_character: "bracketright" # lua 选词快捷键，选最后一个字
   import_preset: default
   custom_bindings:
     __append:

@@ -62,6 +62,8 @@ menu:
   page_size: 6
 
 key_binder:
+  select_first_character: "bracketleft" # lua 选词快捷键，选第一个字
+  select_last_character: "bracketright" # lua 选词快捷键，选最后一个字
   import_preset: default
 
 recognizer:
