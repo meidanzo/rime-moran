@@ -76,3 +76,6 @@ ascii_composer:
     # Shift_R: noop
     # Shift_L: noop
     # Control_L: clear
+ 
+# 通知栏显示方式以及 ascii_mode 应用，与外观无关
+show_notifications_via_notification_center: true
