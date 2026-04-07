@@ -74,6 +74,7 @@ engine:
     - lua_translator@*moran_shijian        # 日期orq 節氣ojq 星期oxq 時間osj
     - lua_translator@*moran_number         # 數字轉大寫, 大寫S引導, 如 S123
     - lua_translator@*moran_unicode        # Unicode輸入, 大寫U引導, 如 U9b54
+    - lua_processor@*select_character      # lua 选词扩展，如需关闭请注释
   filters:
     #- lua_filter@*moran_hint_filter           # 輔助碼提示需要去掉本行開頭的 # 符號
     - lua_filter@*moran_charset_filter     # 字集過濾需要去掉本行開頭的 # 符號
