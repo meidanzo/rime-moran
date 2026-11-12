@@ -1,7 +1,7 @@
 schema:
   schema_id: moran_aux
   name: 輔篩·魔然
-  version: "20251002"
+  version: "20261016"
   author:
     - 自然碼發明人：周志農
     - 方案製作：ksqsf
@@ -20,23 +20,22 @@ switches:
     states: [ 中文, 西文 ]
   - name: full_shape
     states: [ 半角, 全角 ]
-  - name: traditionalization
-    states: [ 汉字, 漢字 ]
   - name: ascii_punct
     reset: 1 
     states: [ 。，, ．， ]
-  - name: extended_charset
-    states: [ 通用, 增廣 ]
   - name: emoji
     states: [ 🈚, 🈶 ]
+  - options: [ std_s, std_s2t, std_s2tw, std_s2hk, std_s2jp, std_s2dzing ]
+    states: [ 简, 繁, 台, 港, 日, 寍 ]
+    # 關於該項, 參見 moran.schema.yaml 中說明
+  - name: extended_charset
+    states: [ 通用, 增廣 ]
   - name: chaifen
     states: [ 不拆, 扌斥 ]
   - name: pinyinhint
     states: [ 🔇, 🔊 ]
   - name: unicode_comment
     states: [ U關, U開 ]
-  - options: [ std_opencc, std_tw, std_hk, std_dzing ]
-    states: [ 通, 臺, 港, 寍 ]
 
 engine:
   processors:
@@ -66,7 +65,7 @@ engine:
     - reverse_lookup_translator@reverse_cangjie5
     - reverse_lookup_translator@reverse_zrlf
     - table_translator@custom_phrase        # 自定義短語
-    #- table_translator@english             # 英語混輸
+    #- lua_translator@*moran_english*translator # 英語混輸
     #- table_translator@japanese            # 日語混輸
     - lua_translator@*moran_aux_translator
     - lua_translator@*moran_shijian        # 日期orq 節氣ojq 星期oxq 時間osj
@@ -78,16 +77,19 @@ engine:
     - lua_filter@*moran_charset_filter
     - lua_filter@*moran_fix_filter
     - lua_filter@*moran_pin*pin_filter
+    - lua_filter@*moran_reorder_filter
     - simplifier@emoji
+    - simplifier@std_s2t
+    - simplifier@std_s2tw
+    - simplifier@std_s2hk
+    - simplifier@std_s2jp
+    - simplifier@std_s2dzing
     - simplifier@chaifen
     - simplifier@pinyinhint
-    - simplifier
-    - simplifier@std_tw
-    - simplifier@std_hk
-    - simplifier@std_dzing
     - lua_filter@*moran_charset_comment_filter  # Unicode 區位提示
     - lua_filter@*moran_unicode_display_filter  # Unicode 編碼提示
-    - lua_filter@*moran_english_filter
+    # - lua_filter@*moran_english*capitalizer_filter
+    # - lua_translator@*moran_english*add_word_filter
     - uniquifier
 
 speller:
@@ -141,15 +143,15 @@ english:
   comment_format:
     - xform/~[A-Za-z]*//
 
+english_add_word:
+  dictionary: moran_english
+  enable_user_dict: false
+
 japanese:
   dictionary: moran_japanese
   enable_completion: false
   enable_sentence: true
   initial_quality: 0
-
-simplifier:
-  option_name: traditionalization
-  opencc_config: s2t.json
 
 emoji:
   opencc_config: moran_emoji.json
@@ -174,17 +176,27 @@ pinyinhint:
   comment_format:
     __include: :/chaifen/comment_format
 
-std_hk:
-  opencc_config: t2hk.json
+std_s2t:
+  option_name: std_s2t
+  opencc_config: s2t.json
+
+std_s2hk:
+  opencc_config: s2hk.json
   option_name: std_hk
 
-std_tw:
-  opencc_config: t2tw.json
-  option_name: std_tw
+std_s2tw:
+  opencc_config: s2tw.json
+  option_name: std_sw
 
-std_dzing:
-  opencc_config: moran_dzing.json
-  option_name: std_dzing
+std_s2jp:
+  opencc_config: s2jp.json
+  option_name: std_s2jp
+  tips: all
+  tags: [abc, number]
+
+std_s2dzing:
+  opencc_config: moran_s2dzing.json
+  option_name: std_s2dzing
   tips: all
 
 reverse_format:
@@ -252,6 +264,7 @@ key_binder:
       - moran:/key_bindings/moran_switches
       - moran:/key_bindings/moran_tab
       - moran:/key_bindings/moran_semicolon_for_2
+      - moran:/key_bindings/moran_ctrl_s
       - moran:/key_bindings/moran_keypad
 
 recognizer:
@@ -416,6 +429,14 @@ moran:
   # Q: 輸入 pkQ 直接上屏「跑來跑去」。
   # （如需要自定義/增加/刪除略碼，請編輯 moran_processor.lua 中的 shorthands 定義。）
   shorthands: false
+
+  # 英語混輸相關設置
+  english:
+    # 添加英文用戶詞
+    add_word:
+      enable: false
+      indicator: "*"
+      trigger: "/add?"
 
 # 默認啓用語言模型
 __include: moran:/octagram/enable_for_sentence

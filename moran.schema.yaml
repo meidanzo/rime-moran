@@ -1,7 +1,7 @@
 schema:
   schema_id: moran
   name: 魔然
-  version: "20250418"
+  version: "20261018"
   author:
     - 自然碼發明人：周志農
     - 方案製作：ksqsf
@@ -26,11 +26,20 @@ switches:
     states: [ 中文, 西文 ]
   - name: full_shape
     states: [ 半角, 全角 ]
-  - name: traditionalization
-    states: [ 汉字, 漢字 ]
   - name: ascii_punct
     reset: 1
     states: [ 。，, ．， ]
+  - name: emoji
+    states: [ 🈚, 🈶 ]
+  - options: [ std_s, std_s2t, std_s2tw, std_s2hk, std_s2jp, std_s2dzing ]
+    states: [ 简, 繁, 台, 港, 日, 寍 ]
+    # 快捷鍵 Ctrl-S 會在前兩個字集之間切換, 由 moran_processor.lua 實現.
+    # 若經常切換簡繁且偏好特定繁體標準, 可自行修改字集列表順序, 例如
+    # patch:
+    #   switches/@4/+:
+    #     options: [ std_s2tw, std_s2hk  ]   # 用不到的其他字集也可以刪掉
+    #     states: [ 台, 港 ]                 # 與 options 匹配
+    #     reset: 0                           # 設定默認值爲 *第一項* (從 0 開始計數)
   - name: extended_charset
     states: [ 通用, 增廣 ]
   - name: inflexible
@@ -38,24 +47,21 @@ switches:
     # 默認情況下，輸入 4 碼時，會禁止碼表輸出（「動詞」模式）。
     # 這是因爲碼表最大碼長爲 4，可能會產生較低頻的多字詞，覆蓋過用戶自造的常用詞語。
     # 當固詞模式啓動後，輸入 4 碼時會優先輸出碼表中的二字詞，這些輸出帶有「⚡️」標記。
-  - name: emoji
-    states: [ 🈚, 🈶 ]
   - name: chaifen
     states: [ 不拆, 扌斥 ]
   - name: pinyinhint
     states: [ 🔇, 🔊 ]
   - name: unicode_comment
     states: [ U關, U開 ]
-  - options: [ std_opencc,  std_tw, std_hk, std_dzing ]
-    reset: 0
-    states: [ 通, 臺, 港, 寍 ]
 
 engine:
   processors:
     - key_binder
+    - ascii_composer
     - lua_processor@*moran_pin*pin_processor
     - lua_processor@*moran_processor
     - lua_processor@*select_character # lua 选词扩展，如需关闭请注释
+    - ascii_composer
     - ascii_composer
     - recognizer
     - speller
@@ -82,7 +88,7 @@ engine:
     - reverse_lookup_translator@reverse_zrlf
     - reverse_lookup_translator@reverse_bopomofo
     - table_translator@custom_phrase       # 自定義短語
-    - table_translator@english             # 英語混輸
+    - lua_translator@*moran_english*translator # 英語混輸
     #- table_translator@japanese_o          # 日語引導輸入
     #- table_translator@japanese            # 日語混輸
     - lua_translator@*moran_express_translator@with_reorder # 翻譯器
@@ -98,16 +104,22 @@ engine:
     - lua_filter@*moran_ijrq_filter
     - lua_filter@*moran_hint_filter
     - simplifier@emoji
+    - simplifier@std_s2t
+    - simplifier@std_s2tw
+    - simplifier@std_s2hk
+    - simplifier@std_s2jp
+    - simplifier@std_s2dzing
     - simplifier@chaifen
     - simplifier@pinyinhint
-    - simplifier@std_hk
-    - simplifier@std_tw
-    - simplifier@std_dzing
-    - simplifier@simplifier
     - lua_filter@*moran_charset_comment_filter  # Unicode 區位提示
     - lua_filter@*moran_unicode_display_filter  # Unicode 編碼提示
-    - lua_filter@*moran_english_filter
+    - lua_filter@*moran_english*capitalizer_filter
+    - lua_filter@*moran_english*add_word_filter
     - uniquifier
+
+navigator:
+  # 在音節跳轉時，跳過音節末尾的分隔符 ' ，設爲 after_delimiter 恢復 Rime 默認行爲
+  syllable_jump_position: before_delimiter
 
 speller:
   alphabet: abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ/;
@@ -133,6 +145,7 @@ smart:         # 整句輸入模式設置，在 top_translator 中被調用
     - xform/([a-z][a-z][a-z][a-z])o/$1°/
   core_word_length: 4
   max_word_length: 10
+  max_sentences: 2
 
 fixed:         # 固頂輸入模式設置，在 top_translator 中被調用
   dictionary: moran_fixed_simp
@@ -164,6 +177,10 @@ english:
   comment_format:
     - xform/.*//
 
+english_add_word:
+  dictionary: moran_english
+  enable_user_dict: false
+
 japanese:
   dictionary: moran_japanese
   enable_completion: false
@@ -188,11 +205,6 @@ quick_repeat:  # 快速重複上屏
   size: 1
   initial_quality: 0
 
-simplifier:
-  option_name: traditionalization
-  opencc_config: s2t.json
-  tags: [abc, number]
-
 chaifen:
   option_name: chaifen
   opencc_config: moran_chaifen.json
@@ -216,23 +228,34 @@ emoji:
   tips: none
   tags: [has_emoji]
 
-std_hk:
-  opencc_config: t2hk.json
-  option_name: std_hk
-  #tips: all
-  tags: [abc]
+std_s2t:
+  opencc_config: s2t.json
+  option_name: std_s2t
+  tags: [abc, number]
 
-std_tw:
-  opencc_config: t2tw.json
-  option_name: std_tw
+std_s2hk:
+  opencc_config: s2hk.json
+  option_name: std_s2hk
   #tips: all
-  tags: [abc]
+  tags: [abc, number]
 
-std_dzing:
-  opencc_config: moran_dzing.json
-  option_name: std_dzing
+std_s2tw:
+  opencc_config: s2tw.json
+  option_name: std_s2tw
+  #tips: all
+  tags: [abc, number]
+
+std_s2jp:
+  opencc_config: s2jp.json
+  option_name: std_s2jp
   tips: all
-  tags: [abc]
+  tags: [abc, number]
+
+std_s2dzing:
+  opencc_config: moran_s2dzing.json
+  option_name: std_s2dzing
+  tips: all
+  tags: [abc, number]
 
 reverse_format:
   target: smart
@@ -291,6 +314,7 @@ reverse_bopomofo:
   preedit_format:
     - xform/^o(lf|bh|cj|vy)//
     - "xlit|1qaz2wsxedcrfv5tgbyhnujm8ik,9ol.0p;/- 6347'|ㄅㄆㄇㄈㄉㄊㄋㄌㄍㄎㄏㄐㄑㄒㄓㄔㄕㄖㄗㄘㄙㄧㄨㄩㄚㄛㄜㄝㄞㄟㄠㄡㄢㄣㄤㄥㄦˉˊˇˋ˙ |"
+  __include: reverse_format
 
 reverse_tick:
   __include: reverse_zrlf
@@ -341,8 +365,8 @@ recognizer:
 recognizer_emoji:
   patterns:
     # CAVEAT: 排除 ^; 避免 ;d 無法自動上屏
-    # CAVEAT: ^o 只保留 ^ou 和 ^o$，避免反查被干擾
-    has_emoji: '(^[a-np-z][a-z/]*$)|(^[a-z]$)|(^ou[a-z/]*$)'
+    # CAVEAT: ^o 只保留 ^oo, ^ou 和 ^o$，避免反查被干擾
+    has_emoji: '(^[a-np-z][a-z/]*$)|^o$|(^o[ou][a-z/]*$)'
 
 recognizer_secondary:
   patterns:
@@ -388,6 +412,7 @@ moran:
     enable: true       # 是否啓用單字的出簡讓全？
     #defer: 5          # 延遲多少位？若不設置该项，或值小於等於 0，則推遲到第二頁的首選
     show_hint: true    # 若讓全，則提示簡碼打法
+    suffix: "o"        # YYXX + suffix 的單字碼會被讓全；如果常用 / 輸入單字，可改爲 "/"
 
     # 詞語級「讓全」，對二、三、四字詞有效
     # 例：假設 lmjx 的輸出是 1.連接 2.鏈接
@@ -465,6 +490,19 @@ moran:
   # Q: 輸入 pkQ 直接上屏「跑來跑去」。
   # （如需要自定義/增加/刪除略碼，請編輯 moran_processor.lua 中的 shorthands 定義。）
   shorthands: false
+
+  # 在輸入超過該長度前，禁止整句輸出。
+  # 例：若設爲 1，則在輸入 2 碼時才產生整句輸出。
+  # 默認爲：0
+  disable_sentence_candidates_upto: 0
+
+  # 英語混輸相關設置
+  english:
+    # 新詞將攜帶 indicator 標記，上屏後會添加到用戶詞庫中。
+    add_word:
+      enable: true
+      indicator: "*"     # comment
+      trigger: "/add?"
 
 # 默認啓用語言模型
 __include: moran:/octagram/enable_for_sentence
